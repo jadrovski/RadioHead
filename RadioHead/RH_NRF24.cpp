@@ -213,14 +213,30 @@ bool RH_NRF24::isSending()
 
 bool RH_NRF24::printRegisters()
 {
-    uint8_t registers[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0d, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x1c, 0x1d};
-
-    uint8_t i;
-    for (i = 0; i < sizeof(registers); i++)
+    // Iterate over register range, but don't process registers not in use.
+    for (uint8_t r = RH_NRF24_REG_00_CONFIG; r <= RH_NRF24_REG_1D_FEATURE; r++)
     {
-	Serial.print(registers[i], HEX);
-	Serial.print(": ");
-	Serial.println(spiReadRegister(registers[i]), HEX);
+      if ((r <= RH_NRF24_REG_17_FIFO_STATUS) || (r >= RH_NRF24_REG_1C_DYNPD))
+      {
+        Serial.print(r, HEX);
+        Serial.print(": ");
+        uint8_t len = 1;
+        // Address registers are 5 bytes in size
+        if (    (RH_NRF24_REG_0A_RX_ADDR_P0 == r)
+             || (RH_NRF24_REG_0B_RX_ADDR_P1 == r)
+             || (RH_NRF24_REG_10_TX_ADDR    == r) )
+        {
+          len = 5;
+        }
+        uint8_t buf[5];
+        spiBurstReadRegister(r, buf, len);
+        for (uint8_t j = 0; j < len; ++j)
+        {
+          Serial.print(buf[j], HEX);
+          Serial.print(" ");
+        }
+        Serial.println("");
+      }
     }
     return true;
 }
