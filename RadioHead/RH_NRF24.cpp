@@ -218,7 +218,7 @@ bool RH_NRF24::printRegisters()
     uint8_t i;
     for (i = 0; i < sizeof(registers); i++)
     {
-	Serial.print(i, HEX);
+	Serial.print(registers[i], HEX);
 	Serial.print(": ");
 	Serial.println(spiReadRegister(registers[i]), HEX);
     }
