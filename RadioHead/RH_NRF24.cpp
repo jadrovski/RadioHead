@@ -113,7 +113,7 @@ bool RH_NRF24::setNetworkAddress(uint8_t* address, uint8_t len)
 	return false;
 
     // Set both TX_ADDR and RX_ADDR_P0 for auto-ack with Enhanced shockwave
-    spiWriteRegister(RH_NRF24_REG_03_SETUP_AW, len);
+    spiWriteRegister(RH_NRF24_REG_03_SETUP_AW, len-2);	/* Mapping [3..5] = [1..3] */
     spiBurstWriteRegister(RH_NRF24_REG_0A_RX_ADDR_P0, address, len);
     spiBurstWriteRegister(RH_NRF24_REG_10_TX_ADDR, address, len);
     return true;
