@@ -133,6 +133,8 @@ public:
     /// allowing the possibilty of address spoofing).
     /// \param[in] address The address of this node.
     void setThisAddress(uint8_t address);
+	
+	virtual bool isChannelActive();
 
 protected:
 
@@ -166,6 +168,8 @@ private:
 
     /// The TCP socket used to communicate with the message server
     int         _socket;
+	
+	bool _busy;
 
     /// Buffer to receive RHTcpProtocol messages
     uint8_t     _rxBuf[RH_TCP_MAX_PAYLOAD_LEN + 5];

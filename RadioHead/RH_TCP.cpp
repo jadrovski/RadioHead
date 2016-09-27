@@ -4,6 +4,7 @@
 // $Id: RH_TCP.cpp,v 1.5 2015/08/13 02:45:47 mikem Exp $
 
 #include <RadioHead.h>
+#include <RHCRC.h>
 
 // This can only build on Linux and compatible systems
 #if (RH_PLATFORM == RH_PLATFORM_UNIX) 
@@ -23,17 +24,16 @@ RH_TCP::RH_TCP(const char* server)
     : _server(server),
       _rxBufLen(0),
       _rxBufValid(false),
-      _socket(-1)
+      _socket(-1),
+	  _busy(false)
 {
 }
-    
+
 bool RH_TCP::init()
 {   
-    if (!connectToServer())
-	return false;
-    return sendThisAddress(_thisAddress);
+    return connectToServer();
 }
-    
+
 bool RH_TCP::connectToServer()
 {
     struct addrinfo hints;
@@ -121,60 +121,65 @@ void RH_TCP::checkForEvents()
     ssize_t count = read(_socket, socketBuf + socketBufLen, sizeof(socketBuf) - socketBufLen);
     if (count < 0)
     {
-	if (errno != EAGAIN)
-	{
-	    fprintf(stderr,"RH_TCP::checkForEvents read error: %s\n", strerror(errno));
-	    exit(1);
-	}
+		if (errno != EAGAIN)
+		{
+			fprintf(stderr,"RH_TCP::checkForEvents read error: %s\n", strerror(errno));
+			exit(1);
+		}
     }
     else if (count == 0)
     {
-	// End of file
-	fprintf(stderr,"RH_TCP::checkForEvents unexpected end of file on read\n");
-	exit(1);
+		// End of file
+		fprintf(stderr,"RH_TCP::checkForEvents unexpected end of file on read\n");
+		exit(1);
     }
     else
     {
-	socketBufLen += count;
-	while (socketBufLen >= 5)
-	{
-	    RHTcpTypeMessage* message = ((RHTcpTypeMessage*)socketBuf);
-	    uint32_t len = ntohl(message->length);
-	    uint32_t messageLen = len + sizeof(message->length);
-	    if (len > sizeof(socketBuf) - sizeof(message->length))
-	    {
-		// Bogus length
-		fprintf(stderr, "RH_TCP::checkForEvents read ridiculous length: %d. Corrupt message stream? Aborting\n", len);
-		exit(1);
-	    }
-	    if (socketBufLen >= len + sizeof(message->length))
-	    {
-		// Got at least all of this message
-		if (message->type == RH_TCP_MESSAGE_TYPE_PACKET && len >= 5)
+		socketBufLen += count;
+		
+		while (socketBufLen >= 4)
 		{
-		    // REVISIT: need to check if we are actually receiving?
-		    // Its a new packet, extract the headers and payload
-		    RHTcpPacket* packet = ((RHTcpPacket*)socketBuf);
-		    _rxHeaderTo    = packet->to;
-		    _rxHeaderFrom  = packet->from;
-		    _rxHeaderId    = packet->id;
-		    _rxHeaderFlags = packet->flags;
-		    uint32_t payloadLen = len - 5;
-		    if (payloadLen <= sizeof(_rxBuf))
-		    {
-			// Enough room in our receiver buffer
-			memcpy(_rxBuf, packet->payload, payloadLen);
-			_rxBufLen = payloadLen;
-			_rxBufFull = true;
-		    }
+			RHTcpTypeMessage* message = ((RHTcpTypeMessage*)socketBuf);
+			uint32_t len = ntohl(message->length);
+			uint32_t messageLen = len + sizeof(message->length);
+			if (len > sizeof(socketBuf) - sizeof(message->length))
+			{
+				// Bogus length
+				fprintf(stderr, "RH_TCP::checkForEvents read ridiculous length: %d. Corrupt message stream? Aborting\n", len);
+				exit(1);
+			}
+			
+			if (socketBufLen >= len + sizeof(message->length))
+			{
+				// Got at least all of this message
+				if (message->type == RH_TCP_MESSAGE_TYPE_PACKET && len >= 5)
+				{
+					// REVISIT: need to check if we are actually receiving?
+					// Its a new packet, extract the headers and payload
+					RHTcpPacket* packet = ((RHTcpPacket*)socketBuf);
+					_rxHeaderTo    = packet->to;
+					_rxHeaderFrom  = packet->from;
+					_rxHeaderId    = packet->id;
+					_rxHeaderFlags = packet->flags;
+					uint32_t payloadLen = len - 5;
+					if (payloadLen <= sizeof(_rxBuf))
+					{
+						// Enough room in our receiver buffer
+						memcpy(_rxBuf, packet->payload, payloadLen);
+						_rxBufLen = payloadLen;
+						_rxBufFull = true;
+					}
+				} else if (message->type == RH_TCP_MESSAGE_TYPE_BUSY)
+				{
+					_busy = message->payload[0] == 1 ? true : false;
+				}
+				// check for other message types here
+				// Now remove the used message by copying the trailing bytes (maybe start of a new message?)
+				// to the top of the buffer
+				memcpy(socketBuf, socketBuf + messageLen, sizeof(socketBuf) - messageLen);
+				socketBufLen -= messageLen;
+			}
 		}
-		// check for other message types here
-		// Now remove the used message by copying the trailing bytes (maybe start of a new message?)
-		// to the top of the buffer
-		memcpy(socketBuf, socketBuf + messageLen, sizeof(socketBuf) - messageLen);
-		socketBufLen -= messageLen;
-	    }
-	}
     }
 }
 
@@ -254,8 +259,10 @@ bool RH_TCP::recv(uint8_t* buf, uint8_t* len)
 
 bool RH_TCP::send(const uint8_t* data, uint8_t len)
 {
-    if (!waitCAD()) 
-	return false;  // Check channel activity (prob not possible for this driver?)
+    if (!waitCAD()) {
+		Serial.println("CAD!");
+		return false;  // Check channel activity (prob not possible for this driver?)
+	}
 
     bool ret = sendPacket(data, len);
     delay(10); // Wait for transmit to succeed. REVISIT: depends on length and speed
@@ -299,6 +306,11 @@ bool RH_TCP::sendPacket(const uint8_t* data, uint8_t len)
     memcpy(m.payload, data, len);
     ssize_t sent = write(_socket, &m, len + 8);
     return sent > 0;
+}
+
+bool RH_TCP::isChannelActive()
+{
+    return _busy;
 }
 
 #endif

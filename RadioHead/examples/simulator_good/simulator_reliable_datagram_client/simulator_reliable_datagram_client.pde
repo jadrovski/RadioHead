@@ -25,7 +25,6 @@ RHReliableDatagram manager(driver, CLIENT_ADDRESS);
 void setup() 
 {
   Serial.begin(9600);
-  driver.setCADTimeout(10);
   if (!manager.init())
     Serial.println("init failed");
   // Defaults after init are 434.0MHz, 0.05MHz AFC pull-in, modulation FSK_Rb2_4Fd36
@@ -44,9 +43,25 @@ void loop()
   Serial.println("Sending to simulator_reliable_datagram_server");
     
   // Send a message to manager_server
-  manager.available();
-  manager.sendto(data, sizeof(data), SERVER_ADDRESS);
-  
-  delay(100);
+  if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS))
+  {
+    // Now wait for a reply from the server
+    uint8_t len = sizeof(buf);
+    uint8_t from;   
+    if (manager.recvfromAckTimeout(buf, &len, 4000, &from))
+    {
+      Serial.print("got reply from : 0x");
+      Serial.print(from, HEX);
+      Serial.print(": ");
+      Serial.println((char*)buf);
+    }
+    else
+    {
+      Serial.println("No reply, is simulator_reliable_datagram_server running?");
+    }
+  }
+  else
+    Serial.println("sendtoWait failed");
+  delay(5000);
 }
 

@@ -12,6 +12,7 @@
 #define RH_TCP_MESSAGE_TYPE_NOP               0
 #define RH_TCP_MESSAGE_TYPE_THISADDRESS       1
 #define RH_TCP_MESSAGE_TYPE_PACKET            2
+#define RH_TCP_MESSAGE_TYPE_BUSY			  3
 
 // Maximum message length (including the headers) we are willing to support
 #define RH_TCP_MAX_PAYLOAD_LEN 255
