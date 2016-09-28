@@ -13,26 +13,22 @@
 #include <RHReliableDatagram.h>
 #include <RH_TCP.h>
 
-#define CLIENT_ADDRESS 1
-#define SERVER_ADDRESS 2
-
 // Singleton instance of the radio driver
 RH_TCP driver;
 
 // Class to manage message delivery and receipt, using the driver declared above
-RHReliableDatagram manager(driver, CLIENT_ADDRESS);
+RHReliableDatagram manager(driver, 255);
 
 void setup() 
 {
   Serial.begin(9600);
   driver.setCADTimeout(10);
-  if (!manager.init())
-    Serial.println("init failed");
-  // Defaults after init are 434.0MHz, 0.05MHz AFC pull-in, modulation FSK_Rb2_4Fd36
-
   // Maybe set this address from teh command line
   if (_simulator_argc >= 2)
      manager.setThisAddress(atoi(_simulator_argv[1]));
+  if (!manager.init())
+    Serial.println("init failed");
+  // Defaults after init are 434.0MHz, 0.05MHz AFC pull-in, modulation FSK_Rb2_4Fd36
 }
 
 uint8_t data[] = "Hello World!";
@@ -41,12 +37,9 @@ uint8_t buf[RH_TCP_MAX_MESSAGE_LEN];
 
 void loop()
 {
-  Serial.println("Sending to simulator_reliable_datagram_server");
-    
-  // Send a message to manager_server
   manager.available();
-  manager.sendto(data, sizeof(data), SERVER_ADDRESS);
-  
-  delay(100);
+  manager.sendto(data, sizeof(data), 255);
+  Serial.println("Sending message");
+  delay(random(50, 200));
 }
 

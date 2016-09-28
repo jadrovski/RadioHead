@@ -260,7 +260,7 @@ bool RH_TCP::recv(uint8_t* buf, uint8_t* len)
 bool RH_TCP::send(const uint8_t* data, uint8_t len)
 {
     if (!waitCAD()) {
-		Serial.println("CAD!");
+		printf("Channel activity detected!\n");
 		return false;  // Check channel activity (prob not possible for this driver?)
 	}
 

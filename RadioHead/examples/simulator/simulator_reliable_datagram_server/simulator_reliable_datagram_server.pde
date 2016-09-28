@@ -41,6 +41,7 @@ void loop()
 {
   manager.available();
   manager.sendto(data, sizeof(data), CLIENT_ADDRESS);
-  delay(100);
+  Serial.println("Sending message");
+  delay(random(50, 200));
 }
 

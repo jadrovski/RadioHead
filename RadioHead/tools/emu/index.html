@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Channel emulator</title>
+    <style type="text/css">
+        #client, #server {
+            height: 100px;
+            width: 100px;
+            background-color: whitesmoke;
+            margin: 10px;
+        }
+
+        #client.mark, #server.mark {
+            background-color: green;
+        }
+    </style>
+</head>
+<body>
+<script src="https://code.jquery.com/jquery-3.1.1.min.js"
+        integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    $(function () {
+        var socket = io('http://127.0.0.1:81');
+        var clientSelector = $('#client');
+        var serverSelector = $('#server');
+        var clients;
+        window.c = clients;
+        socket.on('event', function (data) {
+            if (data.to == 1) {
+                clientSelector.addClass('mark');
+                serverSelector.removeClass('mark');
+            } else {
+                clientSelector.removeClass('mark');
+                serverSelector.addClass('mark');
+            }
+            setTimeout(function () {
+                clientSelector.removeClass('mark');
+                serverSelector.removeClass('mark');
+            }, 30);
+        });
+
+        socket.on('init', function (cl) {
+            clients = cl;
+        })
+    });
+</script>
+
+<div id="client"></div>
+<div id="server"></div>
+
+</body>
+</html>
