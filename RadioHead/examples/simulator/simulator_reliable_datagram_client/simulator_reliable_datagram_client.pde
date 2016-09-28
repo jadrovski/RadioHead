@@ -37,9 +37,16 @@ uint8_t buf[RH_TCP_MAX_MESSAGE_LEN];
 
 void loop()
 {
-  manager.available();
+  uint8_t len = sizeof(buf);
+  uint8_t from;
+  if(manager.recvfrom(buf, &len, &from)) {
+	  Serial.print(">>> RECEIVED: ");
+	  Serial.print((char*)buf);
+	  Serial.print(", FROM: ");
+	  Serial.print(from, HEX);
+	  Serial.print("\n");
+  }
   manager.sendto(data, sizeof(data), 255);
   Serial.println("Sending message");
-  delay(random(50, 200));
 }
 
